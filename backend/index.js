@@ -1,41 +1,56 @@
-const express = require('express'); // Express is a Node.js framework that facilitates routing, middleware handling, template rendering, static file serving, error management, and easy integration with Node.js modules for web development.
-const app = express();         // This will give you all the functionalities of Express.
-const dotenv = require('dotenv');
-const http = require('http');       // This is used to facilitate the http request coming from frontend  that why we have used it.
- const server = http.createServer(app);
-const cors = require('cors');   // This is used to handle api send from server to frontend
-const socket =  require('socket.io');
-const io = socket(server,{            // Set up the socket connection with cors and setting up the methods to be used.
-  cors:{
-    origin:'*',
-    methods:["GET","Post"]
+const express = require('express'); // Express framework for routing and middleware
+const app = express(); // Create Express app
+require('dotenv').config(); // Load environment variables from .env file
+const http = require('http'); // HTTP module for creating server
+const server = http.createServer(app); // Create HTTP server
+const mongoose = require('mongoose'); // MongoDB ORM library
+const cors = require('cors'); // CORS middleware for enabling Cross-Origin Resource Sharing
+const socket = require('socket.io'); // Socket.io for real-time communication
+const io = socket(server, { // Initialize Socket.io server
+  cors: {
+    origin: '*', // Allow requests from any origin (you may want to restrict this in production)
+    methods: ["GET", "POST"] // Allowed HTTP methods
   }
 });
 
-app.use(cors());          
-
-const PORT = process.env.PORT || 5000;
-
-app.get('/',function(req,res){                   // we have used it so that whenever anyone is trying to access our project it will get this message.
-   res.send("Server is Running")
+// Connect to MongoDB
+const MONGODB_URI = process.env.MONGODB_URI; // MongoDB connection URI from environment variables
+mongoose.connect(MONGODB_URI, {}).then(() => {
+  console.log('Connected to MongoDB'); // Log success message when connected to MongoDB
+}).catch((error) => {
+  console.error('Error connecting to MongoDB:', error); // Log error message if failed to connect to MongoDB
 });
 
-io.on('connection',(socket)=>{    // This is for the receiever side where we will get the request from the server, Here we have a callback function that provide us the socket so on connection we need to emit the message as done below.
-  socket.emit('me',socket.id);
-  socket.on('disconnect',()=>{
-      socket.broadcast.emit('callended');
+// Middleware
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json()); // Parse JSON bodies in requests
+
+// routes
+// const mainRouter = require('./routes/auth');
+// app.use('/api',mainRouter);
+
+
+// Socket.io events
+io.on('connection', (socket) => { // Handle socket connection
+  socket.emit('me', socket.id); // Emit 'me' event with socket ID to the client
+  socket.on('disconnect', () => { // Handle disconnection
+    socket.broadcast.emit('callended'); // Emit 'callended' event to all clients upon disconnection
   });
-  socket.on('calluser',({userToCall,signalData,from,name})=>{    //Yeh  dusre client ko 'calluser' event ke saath ek signal bhejne ke liye emit karte he .
-       io.to({userToCall}.emit('calluser',{signal:signalData,from,name}))
+  socket.on('calluser', ({ userToCall, signalData, from, name }) => { // Handle 'calluser' event
+    io.to(userToCall).emit('calluser', { signal: signalData, from, name }); // Emit 'calluser' event with signal data to specified user
   });
-  socket.on('answercall',(data)=>{     
-     io.to(data.to).emit('callaccepted',data.signal);     
+  socket.on('answercall', (data) => { // Handle 'answercall' event
+    io.to(data.to).emit('callaccepted', data.signal); // Emit 'callaccepted' event with signal data to specified user
   });
-   
 });
 
-server.listen(PORT,function(){     // This will show taht our server is running on port 5000
-  console.log(`Server is listening on port ${PORT}`); 
+// Default route
+app.get('/', function (req, res) {
+  res.send("Server is running"); // Send response for default route
 });
 
-
+// Start the server
+const PORT = process.env.PORT || 5000; // Port number from environment variables or default to 5000
+server.listen(PORT, function () {
+  console.log(`Server is listening on port ${PORT}`); // Log server listening message
+});
