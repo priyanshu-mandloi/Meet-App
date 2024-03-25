@@ -1,81 +1,27 @@
-const express = require('express');
-const app = express();
+const express = require('express'); // Express is a Node.js framework that facilitates routing, middleware handling, template rendering, static file serving, error management, and easy integration with Node.js modules for web development.
+const app = express();         // This will give you all the functionalities of Express.
 const dotenv = require('dotenv');
-const httpServer = require('http').createServer;
-const cors = require('cors');
-const server = http.createServer(app);
-const socket = require('socket.io');
-const io = require("socket.io")(server,{
-   cors:{
-      origin:process.env.origin||'*',
-   },
+const http = require('http');       // This is used to facilitate the http request coming from frontend  that why we have used it.
+ const server = http.createServer(app);
+const cors = require('cors');   // This is used to handle api send from server to frontend
+const socket =  require('socket.io');
+const io = socket(server,{            // Set up the socket connection with cors and setting up the methods to be used.
+  cors:{
+    origin:'*',
+    methods:["GET","Post"]
+  }
 });
 
-const users = {};
+app.use(cors());          
 
 const PORT = process.env.PORT || 5000;
 
-const socketToRoom = {};
-
-io.on("connection", (socket) => {
-  socket.on("join room", ({ roomID, user }) => {
-    if (users[roomID]) {
-      users[roomID].push({ userId: socket.id, user });
-    } else {
-      users[roomID] = [{ userId: socket.id, user }];
-    }
-    socketToRoom[socket.id] = roomID;
-    const usersInThisRoom = users[roomID].filter(
-      (user) => user.userId !== socket.id
-    );
-
-    // console.log(users);
-    socket.emit("all users", usersInThisRoom);
-  });
-
-  // signal for offer
-  socket.on("sending signal", (payload) => {
-    // console.log(payload);
-    io.to(payload.userToSignal).emit("user joined", {
-      signal: payload.signal,
-      callerID: payload.callerID,
-      user: payload.user,
-    });
-  });
-
-  // signal for answer
-  socket.on("returning signal", (payload) => {
-    io.to(payload.callerID).emit("receiving returned signal", {
-      signal: payload.signal,
-      id: socket.id,
-    });
-  });
-
-  // send message
-  socket.on("send message", (payload) => {
-    io.emit("message", payload);
-  });
-
-  // disconnect
-  socket.on("disconnect", () => {
-    const roomID = socketToRoom[socket.id];
-    let room = users[roomID];
-    if (room) {
-      room = room.filter((item) => item.userId !== socket.id);
-      users[roomID] = room;
-    }
-    socket.broadcast.emit("user left", socket.id);
-  });
+app.get('/',function(req,res){                   // we have used it so that whenever anyone is trying to access our project it will get this message.
+   res.send("Server is listening on port")
 });
 
-console.clear();
-app.get('/', function(req, res) {
-   res.send('Server Running');
-});
-
-app.listen(PORT, function() {
-   console.log(`Server is running on port ${PORT}`);
+server.listen(PORT,function(){     // This will show taht our server is running on port 5000
+  console.log(`Server is listening on port ${PORT}`); 
 });
 
 
-app
