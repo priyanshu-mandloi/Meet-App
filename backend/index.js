@@ -17,7 +17,21 @@ app.use(cors());
 const PORT = process.env.PORT || 5000;
 
 app.get('/',function(req,res){                   // we have used it so that whenever anyone is trying to access our project it will get this message.
-   res.send("Server is listening on port")
+   res.send("Server is Running")
+});
+
+io.on('connection',(socket)=>{    // This is for the receiever side where we will get the request from the server, Here we have a callback function that provide us the socket so on connection we need to emit the message as done below.
+  socket.emit('me',socket.id);
+  socket.on('disconnect',()=>{
+      socket.broadcast.emit('callended');
+  });
+  socket.on('calluser',({userToCall,signalData,from,name})=>{    //Yeh  dusre client ko 'calluser' event ke saath ek signal bhejne ke liye emit karte he .
+       io.to({userToCall}.emit('calluser',{signal:signalData,from,name}))
+  });
+  socket.on('answercall',(data)=>{     
+     io.to(data.to).emit('callaccepted',data.signal);     
+  });
+   
 });
 
 server.listen(PORT,function(){     // This will show taht our server is running on port 5000
