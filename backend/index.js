@@ -5,11 +5,28 @@ const http = require('http'); // HTTP module for creating server
 const server = http.createServer(app); // Create HTTP server
 const mongoose = require('mongoose'); // MongoDB ORM library
 const cors = require('cors'); // CORS middleware for enabling Cross-Origin Resource Sharing
+const cookieParser = require('cookie-parser');
+// CORS configuration
 const socket = require('socket.io'); // Socket.io for real-time communication
+const allowedOrigins = process.env.FRONTEND_URL||['http://localhost:5173']; // Add more origins if needed
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST"],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
 const io = socket(server, { // Initialize Socket.io server
   cors: {
     origin: '*', // Allow requests from any origin (you may want to restrict this in production)
-    methods: ["GET", "POST"] // Allowed HTTP methods
+    methods: ["GET", "POST"], // Allowed HTTP methods
+    credentials: true
   }
 });
 
@@ -24,10 +41,13 @@ mongoose.connect(MONGODB_URI, {}).then(() => {
 // Middleware
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON bodies in requests
-
+app.use(cookieParser());
+app.use(express.urlencoded({extended:false}));
 // routes
-// const mainRouter = require('./routes/auth');
-// app.use('/api',mainRouter);
+const mainRouter = require('./routes/auth');
+app.use('/',mainRouter);
+
+
 
 
 // Socket.io events

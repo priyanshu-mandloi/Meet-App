@@ -1,60 +1,90 @@
-
-// In controllers/auth_controller.js
-
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+// const jwt = require('jsonwebtoken');
+require('dotenv').config();
+const{hashPassword,comparePassword} = require('../helpers/auth_help');
+const test = (req,res)=>{
+  res.json("test is Working");
+}
 
-// Controller function to register a new user
-exports.register = async (req, res) => {
-  try {
-    // Extract user details from request body
-    const { email, password } = req.body;
+const registerUser =async(req,res)=>{
+   try{
+      const {name,email,password} = req.body;
+      // check if the name is not given
+      if(!name){
+         return res.json({
+             error:'name is required' 
+         })
+      };
+      // check for the password
+      if(!password||password.length<6){
+        return res.json({
+            error:'Password is required and must be at Least 6 characters Long' 
+        })
+     };
+     // check Email
+      const exist = await User.findOne({email});
+      if(exist){
+        return res.json({
+           error:"Email already exists"
+        });
+      }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
+      const hashedPassword = await hashPassword(password); 
+      const user = await User.create({
+        name,
+        email,
+        password:hashedPassword
+      });
+      return res.json(user);
+   }catch(err){
+      console.log(err);
+   }
+}
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+const loginUser = async (req, res) => {
+   try {
+       const { email, password } = req.body;
+       const user = await User.findOne({ email });
+       if (!user) {
+           return res.json({
+               error: 'No user found'
+           });
+       }
 
-    // Create a new user instance
-    const newUser = new User({ email, password: hashedPassword });
+       // Check if the password matches
+       const match = await comparePassword(password, user.password);
+       if (!match) {
+           return res.json({
+               error: 'Incorrect password'
+           });
+       }
 
-    // Save the user to the database
-    await newUser.save();
+       // If the password matches, return a success response
+       res.json({
+           message: 'Login successful',
+           user: user // Optionally, you can send user data in the response
+       });
+   } catch (err) {
+       console.error(err);
+       res.status(500).json({
+           error: 'Internal server error'
+       });
+   }
+}
 
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// const getProfile = (req, res) => {
+//     const { token } = req.cookies;
+//     if (token) {
+//         jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+//             if (err) {
+//                 console.error("JWT verification error:", err);
+//                 return res.status(401).json({ error: "Unauthorized" });
+//             }
+//             res.json(user);
+//         });
+//     } else {
+//         res.json(null);
+//     }
+// }
 
-// Controller function to login a user
-exports.login = async (req, res) => {
-  try {
-    // Extract user details from request body
-    const { email, password } = req.body;
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-
-    res.json({ token });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+module.exports = {test,registerUser,loginUser};
