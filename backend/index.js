@@ -1,14 +1,15 @@
+
 const express = require('express'); // Express framework for routing and middleware
 const app = express(); // Create Express app
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config();// Load environment variables from .env file
 const http = require('http'); // HTTP module for creating server
-const server = http.createServer(app); // Create HTTP server
-const mongoose = require('mongoose'); // MongoDB ORM library
-const cors = require('cors'); // CORS middleware for enabling Cross-Origin Resource Sharing
+const server = http.createServer(app);// Create HTTP server
+const mongoose = require('mongoose');// MongoDB ORM library
+const cors = require('cors');// CORS middleware for enabling Cross-Origin Resource Sharing
 const cookieParser = require('cookie-parser');
 // CORS configuration
-const socket = require('socket.io'); // Socket.io for real-time communication
-const allowedOrigins = process.env.FRONTEND_URL||['http://localhost:5173']; // Add more origins if needed
+const socket = require('socket.io');
+const allowedOrigins = process.env.FRONTEND_URL || ['http://localhost:5173'];// Add more origins if needed
 const corsOptions = {
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
@@ -22,34 +23,28 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-const io = socket(server, { // Initialize Socket.io server
+const io = socket(server, {
   cors: {
-    origin: '*', // Allow requests from any origin (you may want to restrict this in production)
-    methods: ["GET", "POST"], // Allowed HTTP methods
+    origin: '*',// Allow requests from any origin (you may want to restrict this in production)
+    methods: ["GET", "POST"],// Allowed HTTP methods
     credentials: true
   }
 });
 
-// Connect to MongoDB
-const MONGODB_URI = process.env.MONGODB_URI; // MongoDB connection URI from environment variables
+const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI, {}).then(() => {
-  console.log('Connected to MongoDB'); // Log success message when connected to MongoDB
+  console.log('Connected to MongoDB');
 }).catch((error) => {
-  console.error('Error connecting to MongoDB:', error); // Log error message if failed to connect to MongoDB
+  console.error('Error connecting to MongoDB:', error);
 });
 
-// Middleware
-app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // Parse JSON bodies in requests
+app.use(express.json());// Parse JSON bodies in requests
 app.use(cookieParser());
 app.use(express.urlencoded({extended:false}));
-// routes
+
+// Parse JSON bodies in requests
 const mainRouter = require('./routes/auth');
 app.use('/',mainRouter);
-
-
-
-
 // Socket.io events
 io.on('connection', (socket) => { // Handle socket connection
   socket.emit('me', socket.id); // Emit 'me' event with socket ID to the client
@@ -69,8 +64,7 @@ app.get('/', function (req, res) {
   res.send("Server is running"); // Send response for default route
 });
 
-// Start the server
-const PORT = process.env.PORT || 5000; // Port number from environment variables or default to 5000
+const PORT = process.env.PORT || 5000;// Port number from environment variables or default to 5000
 server.listen(PORT, function () {
-  console.log(`Server is listening on port ${PORT}`); // Log server listening message
+  console.log(`Server is listening on port ${PORT}`);
 });

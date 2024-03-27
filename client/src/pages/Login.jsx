@@ -21,7 +21,7 @@ export default function Login() {
         toast.error(data.error);
       } else {
         setData({});
-        navigate("/");
+        navigate("/dashboard");
       }
     } catch (e) {
       console.log(e);
